@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody2D))]
+[RequireComponent(typeof(Animator))]
 public abstract class CharacterBase : MonoBehaviour
 {
     //got help from a youtube series that is for making an rpg type game
@@ -18,12 +20,30 @@ public abstract class CharacterBase : MonoBehaviour
 
     protected Animator animator;
 
+    [SerializeField]
+    protected Transform hitBox;
+
+    protected float timeBetweenMelee;
+    [SerializeField]
+    protected float startTimeBetweenMelee;
+    [SerializeField]
+    protected float meleeRange;
+
+    [SerializeField]
+    protected PlayerStat playerHealth;
+
+    [SerializeField]
+    private float initialHealth;
+    [SerializeField]
+    private float maxHealth;
+
 
     // Start is called before the first frame update
     protected virtual void Start()
     {
         animator = GetComponent<Animator>();
         rb2d = GetComponent<Rigidbody2D>();
+        playerHealth.Initialize(initialHealth, maxHealth);
     }
 
     // Update is called once per frame
@@ -73,5 +93,15 @@ public abstract class CharacterBase : MonoBehaviour
         animator.SetBool("isMoving", isMoving);
     }
 
+    public virtual void TakeDamage(float damageTaken)
+    {
+        //reduce health
+        playerHealth.MyCurrentValue -= damageTaken;
+
+        if(playerHealth.MyCurrentValue <= 0)
+        {
+            animator.SetTrigger("Die");
+        }
+    }
     
 }

@@ -42,7 +42,7 @@ public class PlayerStat : MonoBehaviour
                 currentValue = value;
             }
             currentImageFill = currentValue / MyMaxValue;
-            statText.text = currentValue + " / " + MyMaxValue;
+            statText.text = currentValue.ToString("F0") + " / " + MyMaxValue;
         }
 
     }

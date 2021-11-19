@@ -5,6 +5,8 @@ TagManager:
   serializedVersion: 2
   tags:
   - Building
+  - Enemy
+  - HitBox
   layers:
   - Default
   - TransparentFX
@@ -14,8 +16,8 @@ TagManager:
   - UI
   - 
   - 
-  - 
-  - 
+  - LineOfSightBlock
+  - Clickable
   - 
   - 
   - 
@@ -45,11 +47,17 @@ TagManager:
   - name: Background
     uniqueID: 2026050507
     locked: 0
+  - name: Obstacles
+    uniqueID: 2961354863
+    locked: 0
   - name: 2nd Background
     uniqueID: 3000077749
     locked: 0
   - name: Decorations
     uniqueID: 2568786939
+    locked: 0
+  - name: Enemy
+    uniqueID: 2835369307
     locked: 0
   - name: Player
     uniqueID: 3480309299
