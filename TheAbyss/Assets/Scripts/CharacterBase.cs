@@ -11,7 +11,7 @@ public abstract class CharacterBase : MonoBehaviour
 
 
     [SerializeField]
-    private float moveSpeed;
+    protected float moveSpeed;
 
     protected Vector2 moveDirection;
     protected bool isMoving;
@@ -37,6 +37,10 @@ public abstract class CharacterBase : MonoBehaviour
     [SerializeField]
     private float maxHealth;
 
+    protected bool isHurt;
+
+    private float closestDistance = 100;
+
 
     // Start is called before the first frame update
     protected virtual void Start()
@@ -50,11 +54,13 @@ public abstract class CharacterBase : MonoBehaviour
     protected virtual void Update()
     {
         Animate();
+        calculateSortingLayer();
     }
 
     private void FixedUpdate()
     {
         Move();
+        hurtAnimationReset();
     }
 
     public void Move()
@@ -77,7 +83,6 @@ public abstract class CharacterBase : MonoBehaviour
             animator.SetFloat("moveY", direction.y);
         }
 
-
         //only set the animation direction when the movement vector != 0, so we dont snap back to the idle down animation when not pressing a key
         if (direction != Vector2.zero) //when we are not idle, do walking anim. if we are idle, do idle anim
         {
@@ -91,17 +96,61 @@ public abstract class CharacterBase : MonoBehaviour
         }
 
         animator.SetBool("isMoving", isMoving);
+        //if (isHurt)
+        //{
+        //    isHurt = false;
+        //    animator.SetBool("isHurt", isHurt);
+        //}
     }
 
     public virtual void TakeDamage(float damageTaken)
     {
         //reduce health
         playerHealth.MyCurrentValue -= damageTaken;
+        isHurt = true;
+        animator.SetBool("isHurt", isHurt);
 
         if(playerHealth.MyCurrentValue <= 0)
         {
             animator.SetTrigger("Die");
         }
     }
+
+    public void calculateSortingLayer()
+    {
+        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+        GameObject closestEnemy = GameObject.FindGameObjectWithTag("Enemy");
+
+        if(enemies != null && closestEnemy != null)
+        {
+            foreach (GameObject enemy in enemies)
+            {
+                if (Vector2.Distance(GameObject.FindGameObjectWithTag("Player").GetComponent<Transform>().position, enemy.GetComponent<Transform>().position) < closestDistance)
+                {
+                    closestDistance = Vector2.Distance(GameObject.FindGameObjectWithTag("Player").GetComponent<Transform>().position, enemy.GetComponent<Transform>().position);
+                    closestEnemy = enemy;
+                }
+            }
+            if (GameObject.FindGameObjectWithTag("Player").GetComponent<Transform>().position.y > closestEnemy.GetComponent<Transform>().position.y)
+            {
+                GameObject.FindGameObjectWithTag("Player").GetComponent<SpriteRenderer>().sortingLayerName = "PlayerBehindEnemy";
+            }
+            else
+            {
+                GameObject.FindGameObjectWithTag("Player").GetComponent<SpriteRenderer>().sortingLayerName = "Player";
+            }
+        }
+        closestDistance = 0;
+    }
+
+    public void hurtAnimationReset()
+    {
+        if (isHurt)
+        {
+            isHurt = false;
+            animator.SetBool("isHurt", isHurt);
+        }
+    }
+
     
 }

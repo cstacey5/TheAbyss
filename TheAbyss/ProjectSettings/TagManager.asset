@@ -18,8 +18,8 @@ TagManager:
   - 
   - LineOfSightBlock
   - Clickable
-  - 
-  - 
+  - Both
+  - Minimap
   - 
   - 
   - 
@@ -55,6 +55,9 @@ TagManager:
     locked: 0
   - name: Decorations
     uniqueID: 2568786939
+    locked: 0
+  - name: PlayerBehindEnemy
+    uniqueID: 4007577107
     locked: 0
   - name: Enemy
     uniqueID: 2835369307

@@ -27,13 +27,31 @@ public class Player : CharacterBase
      private float errorTextTime = 3;
      private bool errorTextOn;
 
+     //attack damages
+     [SerializeField]
+     private int baseMeleeDamage;
+     private int meleeDamageMultiplier = 1;
+
+     [SerializeField]
+     private float playerRegenHealthSpeed;
+
+    //private float hurtReset = 1;
+
+     public Transform minimapSpriteTransform;
+
+    [SerializeField]
+    private int teleportRange;
+    [SerializeField]
+    private GameObject teleportPrefab;
+    [SerializeField]
+    private float teleportCooldownStart;
+    private float teleportCooldownCurrent = 0;
 
 
      protected override void Start()
     {
 
         energy.Initialize(initialEnergy, maxEnergy);
-
         base.Start();
     }
 
@@ -42,6 +60,8 @@ public class Player : CharacterBase
         GetPlayerInput();
         Attack();
         regenEnergy();
+        regenHealth();
+
         base.Update();
      
      }
@@ -52,16 +72,16 @@ public class Player : CharacterBase
 
         //testing health/ mana bar functionality
         //will be removed later, just using for debug purposes
-        if (Input.GetKeyDown(KeyCode.I))
-            {
-                this.playerHealth.MyCurrentValue -= 10;
-                energy.MyCurrentValue -= 10;
-            }
-        if (Input.GetKeyDown(KeyCode.O))
-        {
-            this.playerHealth.MyCurrentValue += 10;
-            energy.MyCurrentValue += 10;
-        }
+        //if (Input.GetKeyDown(KeyCode.I))
+        //{
+        //    playerHealth.MyCurrentValue -= 10;
+        //    energy.MyCurrentValue -= 10;
+        //}
+        //if (Input.GetKeyDown(KeyCode.O))
+        //{
+        //    playerHealth.MyCurrentValue += 10;
+        //    energy.MyCurrentValue += 10;
+        //}
 
 
         //movement
@@ -71,22 +91,29 @@ public class Player : CharacterBase
         {
             moveDirection += Vector2.up;
             attackIndex = 0;
-        }
-        if (Input.GetKey(KeyCode.S))
-        {
-            moveDirection += Vector2.down;
-            attackIndex = 2;
-        }
-        if (Input.GetKey(KeyCode.A))
-        {
-            moveDirection += Vector2.left;
-            attackIndex = 3;
+            minimapSpriteTransform.eulerAngles = new Vector3(0, 0, 0);
+            
         }
         if (Input.GetKey(KeyCode.D))
         {
             moveDirection += Vector2.right;
             attackIndex = 1;
+            minimapSpriteTransform.eulerAngles = new Vector3(0, 0, 270);
+
         }
+        if (Input.GetKey(KeyCode.S))
+        {
+            moveDirection += Vector2.down;
+            attackIndex = 2;
+            minimapSpriteTransform.eulerAngles = new Vector3(0, 0, 180);
+        }
+        if (Input.GetKey(KeyCode.A))
+        {
+            moveDirection += Vector2.left;
+            attackIndex = 3;
+            minimapSpriteTransform.eulerAngles = new Vector3(0, 0, 90);
+        }
+
 
        
     }
@@ -122,7 +149,7 @@ public class Player : CharacterBase
         //attacking
         if (timeBetweenMelee <= 0)
         {
-            if (Input.GetKeyDown("1"))
+            if (Input.GetKeyDown("1") && MyTarget != null)
             {
                 LOSBlock();
                 Debug.Log(Vector2.Distance(transform.position, MyTarget.transform.position));
@@ -132,28 +159,38 @@ public class Player : CharacterBase
                     isAttacking = true;
                     energy.MyCurrentValue -= 10;
                     animator.SetBool("isAttacking", isAttacking);
-                    MyTarget.GetComponentInParent<Enemy>().TakeDamage(20);
+                    MyTarget.GetComponentInParent<Enemy>().TakeDamage(baseMeleeDamage * meleeDamageMultiplier);
 
                     timeBetweenMelee = startTimeBetweenMelee;
                 }
                 else
                 {
-                    if (!errorTextOn)
+
+                    if (!InLineOfSight()) //not in line of sight
                     {
-                        if (!InLineOfSight())
-                        {
-                            errorText.text = "Target not in line of sight!";
-                            errorTextTime = 3;
-                            errorTextOn = true;
-                        }
-                        if(energy.MyCurrentValue < 10)
-                        {
-                            errorText.text = "Not enough energy!";
-                            errorTextTime = 3;
-                            errorTextOn = true;
-                        }
+                        errorText.text = "Target not in line of sight!";
+                        errorTextTime = 3;
+                        errorTextOn = true;
+                    }
+                    if (energy.MyCurrentValue < 10) //not enough energy
+                    {
+                        errorText.text = "Not enough energy!";
+                        errorTextTime = 3;
+                        errorTextOn = true;
+                    }
+                    if (Vector2.Distance(transform.position, MyTarget.transform.position) > meleeRange) //target out of range
+                    {
+                        errorText.text = "Target out of range!";
+                        errorTextTime = 3;
+                        errorTextOn = true;
                     }
                 }
+            }
+            else if (Input.GetKeyDown("1") && MyTarget == null) //no target
+            {
+                errorText.text = "No target selected!";
+                errorTextTime = 3;
+                errorTextOn = true;
             }
         }
         else
@@ -162,6 +199,25 @@ public class Player : CharacterBase
             isAttacking = false;
             animator.SetBool("isAttacking", isAttacking);
         }
+
+
+        //teleport
+        if(teleportCooldownCurrent > 0)
+        {
+            teleportCooldownCurrent -= Time.deltaTime;
+        }
+        if (Input.GetKeyDown("2") && teleportCooldownCurrent <= 0)
+        {
+            teleportAbility();
+            teleportCooldownCurrent = teleportCooldownStart;
+        }
+        else if(Input.GetKeyDown("2") && teleportCooldownCurrent > 0)
+        {
+            errorText.text = "Teleport on cooldown!";
+            errorTextTime = 3;
+            errorTextOn = true;
+        }
+
     }
 
     //chooses which los blocks to spawn
@@ -185,6 +241,104 @@ public class Player : CharacterBase
         if(energy.MyCurrentValue > energy.MyMaxValue)
         {
             energy.MyCurrentValue = energy.MyMaxValue;
+        }
+    }
+
+    private void regenHealth()
+    {
+        if(playerHealth.MyCurrentValue < playerHealth.MyMaxValue)
+        {
+            playerHealth.MyCurrentValue += Time.deltaTime * playerRegenHealthSpeed;
+        }
+        if(playerHealth.MyCurrentValue > playerHealth.MyMaxValue)
+        {
+            playerHealth.MyCurrentValue = playerHealth.MyMaxValue;
+        }
+    }
+    
+    //function that uses raycast to check if the player can teleport the full range, if no collider is hit, the normal teleport takes place
+    //if a collider is hit, then we teleport to hit.point so we dont accidentally teleport over a collider / rubber band against the collider
+    private void teleportAbility()
+    {
+        //Debug.Log(LayerMask.GetMask("Both"));
+        Vector3 teleportPos;
+        if(attackIndex == 0) // up
+        {
+            teleportPos = new Vector3(transform.position.x, transform.position.y + teleportRange, transform.position.z);
+            RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.up, Vector2.Distance(transform.position, teleportPos), LayerMask.GetMask("Both"));
+            if (hit.collider == null)
+            {
+                //teleport player to teleport pos
+                Instantiate(teleportPrefab, teleportPos, Quaternion.identity);
+                transform.position = teleportPos;
+            }
+            else
+            {
+                //Debug.Log(hit.collider);
+                teleportPos = hit.point;
+                Instantiate(teleportPrefab, teleportPos, Quaternion.identity);
+                transform.position = teleportPos;
+                //teleport player to location of collider interaction
+            }
+
+        }
+        else if(attackIndex == 1) //right
+        {
+            teleportPos = new Vector3(transform.position.x + teleportRange, transform.position.y, transform.position.z);
+            RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.right, Vector2.Distance(transform.position, teleportPos), LayerMask.GetMask("Both"));
+            if (hit.collider == null)
+            {
+                //teleport player to teleport pos
+                Instantiate(teleportPrefab, teleportPos, Quaternion.identity);
+                transform.position = teleportPos;
+            }
+            else
+            {
+                //Debug.Log(hit.collider);
+                teleportPos = hit.point;
+                Instantiate(teleportPrefab, teleportPos, Quaternion.identity);
+                transform.position = teleportPos;
+                //teleport player to location of collider interaction
+            }
+        }
+        else if(attackIndex == 2) //down
+        {
+            teleportPos = new Vector3(transform.position.x, transform.position.y - teleportRange, transform.position.z);
+            RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.down, Vector2.Distance(transform.position, teleportPos), LayerMask.GetMask("Both"));
+            if (hit.collider == null)
+            {
+                //teleport player to teleport pos
+                Instantiate(teleportPrefab, teleportPos, Quaternion.identity);
+                transform.position = teleportPos;
+            }
+            else
+            {
+                //Debug.Log(hit.collider);
+                teleportPos = hit.point;
+                Instantiate(teleportPrefab, teleportPos, Quaternion.identity);
+                transform.position = teleportPos;
+                //teleport player to location of collider interaction
+            }
+        }
+        else if(attackIndex == 3) //left
+        {
+            teleportPos = new Vector3(transform.position.x - teleportRange, transform.position.y, transform.position.z);
+            RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.left, Vector2.Distance(transform.position, teleportPos), LayerMask.GetMask("Both"));
+            if (hit.collider == null)
+            {
+                //teleport player to teleport pos
+                Instantiate(teleportPrefab, teleportPos, Quaternion.identity);
+                transform.position = teleportPos;
+
+            }
+            else
+            {
+                Debug.Log(hit.collider);
+                teleportPos = hit.point;
+                Instantiate(teleportPrefab, teleportPos, Quaternion.identity);
+                transform.position = teleportPos;
+                //teleport player to location of collider interaction
+            }
         }
     }
 }
