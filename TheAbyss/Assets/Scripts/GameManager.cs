@@ -37,14 +37,14 @@ public class GameManager : MonoBehaviour
             //if we hit something
             if (hit.collider != null)
             {
-                Debug.Log("1" + hit.collider);
+                //Debug.Log("1" + hit.collider);
                 if(currentTarget != null)
                 {
-                    Debug.Log("2");
+                    //Debug.Log("2");
                     currentTarget.UnselectTarget();
                 }
 
-                Debug.Log("3");
+                //Debug.Log("3");
                 currentTarget = hit.collider.GetComponentInParent<NPC>();
 
                 player.MyTarget = currentTarget.SelectTarget();
@@ -52,7 +52,7 @@ public class GameManager : MonoBehaviour
             //if we dont hit something
             else
             {
-                Debug.Log("111");
+                //Debug.Log("111");
                 if(currentTarget != null)
                 {
                     currentTarget.UnselectTarget();

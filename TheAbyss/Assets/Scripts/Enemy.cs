@@ -52,7 +52,7 @@ public class Enemy : NPC
 
     private void FollowTarget()
     {
-        if(target != null && playerHealth.MyCurrentValue > 0)
+        if(target != null && playerHealth.MyCurrentValue > 0 && GameObject.FindGameObjectWithTag("Player").GetComponent<Player>().isDead == false)
         {
             //transform.position = Vector2.MoveTowards(transform.position, target.position, moveSpeed * Time.deltaTime);
             moveDirection = (target.position - transform.position).normalized;
@@ -70,7 +70,7 @@ public class Enemy : NPC
 
     private void Attack()
     {
-        if(target != null)
+        if(target != null && GameObject.FindGameObjectWithTag("Player").GetComponent<Player>().isDead == false)
         {
             if (Vector2.Distance(Target.position, transform.position) <= meleeRange && timeBetweenMelee <= 0 && playerHealth.MyCurrentValue > 0)
             {

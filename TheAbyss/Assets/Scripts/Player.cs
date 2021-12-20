@@ -27,6 +27,9 @@ public class Player : CharacterBase
      private float errorTextTime = 3;
      private bool errorTextOn;
 
+     public bool isDead = false;
+     private float respawnTime = 10;
+
      //attack damages
      [SerializeField]
      private int baseMeleeDamage;
@@ -35,9 +38,26 @@ public class Player : CharacterBase
      [SerializeField]
      private float playerRegenHealthSpeed;
 
-    //private float hurtReset = 1;
+    [SerializeField]
+    private Image actionBar1Image;
+    [SerializeField]
+    private Text actionBar1Text;
 
-     public Transform minimapSpriteTransform;
+    [SerializeField]
+    private Image actionBar2Image;
+    [SerializeField]
+    private Text actionBar2Text;
+
+    [SerializeField]
+    private Image actionBar3Image;
+    [SerializeField]
+    private Text actionBar3Text;
+
+    [SerializeField]
+    private GameObject fireballPrefab;
+
+
+    public Transform minimapSpriteTransform;
 
     [SerializeField]
     private int teleportRange;
@@ -47,7 +67,15 @@ public class Player : CharacterBase
     private float teleportCooldownStart;
     private float teleportCooldownCurrent = 0;
 
+    [SerializeField]
+    private float castCooldownStart = 3;
+    private float castCooldownCurrent = 0;
+    private bool isCasting = false;
+    [SerializeField]
+    private int fireballDamage;
+    private float animReset = 0.1f;
 
+    
      protected override void Start()
     {
 
@@ -62,56 +90,108 @@ public class Player : CharacterBase
         regenEnergy();
         regenHealth();
 
+
+        if(teleportCooldownCurrent <= 0)
+        {
+            actionBar2Text.text = "";
+            actionBar2Image.color = Color.white;
+        }
+        else
+        {
+            actionBar2Text.text = teleportCooldownCurrent.ToString();
+            actionBar2Image.color = new Color(0.5f, 0.5f, 0.5f, 1);
+        }
+
+        if (timeBetweenMelee <= 0)
+        {
+            actionBar1Text.text = "";
+            actionBar1Image.color = Color.white;
+        }
+        else
+        {
+            actionBar1Text.text = timeBetweenMelee.ToString();
+            actionBar1Image.color = new Color(0.5f, 0.5f, 0.5f, 1);
+        }
+
+        if (castCooldownCurrent <= 0)
+        {
+            actionBar3Text.text = "";
+            actionBar3Image.color = Color.white;
+        }
+        else
+        {
+            actionBar3Text.text = castCooldownCurrent.ToString();
+            actionBar3Image.color = new Color(0.5f, 0.5f, 0.5f, 1);
+        }
+
+        if (playerHealth.MyCurrentValue <= 0.9 && !isDead)
+        {
+            isDead = true;
+            animator.SetBool("isDead", isDead);
+        }
+
+        if (isDead)
+        {
+            respawnTime -= Time.deltaTime;
+            errorText.text = "Respawn in " + respawnTime.ToString("F0");
+        }
+
+        if (respawnTime <= 0)
+        {
+            errorText.text = "";
+            respawnTime = 10;
+            isDead = false;
+            playerHealth.MyCurrentValue = playerHealth.MyMaxValue;
+            animator.SetBool("isDead", isDead);
+            transform.position = new Vector3(-17.22f, -1.12f, transform.position.z);
+        }
+
         base.Update();
      
      }
 
+    //private void FixedUpdate()
+    //{
+    //    if (isCasting)
+    //    {
+    //        isCasting = false;
+    //        animator.SetBool("isCasting", isCasting);
+    //    }
+    //}
+
     private void GetPlayerInput()
     {
 
-
-        //testing health/ mana bar functionality
-        //will be removed later, just using for debug purposes
-        //if (Input.GetKeyDown(KeyCode.I))
-        //{
-        //    playerHealth.MyCurrentValue -= 10;
-        //    energy.MyCurrentValue -= 10;
-        //}
-        //if (Input.GetKeyDown(KeyCode.O))
-        //{
-        //    playerHealth.MyCurrentValue += 10;
-        //    energy.MyCurrentValue += 10;
-        //}
-
-
         //movement
         moveDirection = Vector2.zero;
+        if (!isDead)
+        {
+            if (Input.GetKey(KeyCode.W))
+            {
+                moveDirection += Vector2.up;
+                attackIndex = 0;
+                minimapSpriteTransform.eulerAngles = new Vector3(0, 0, 0);
 
-        if (Input.GetKey(KeyCode.W))
-        {
-            moveDirection += Vector2.up;
-            attackIndex = 0;
-            minimapSpriteTransform.eulerAngles = new Vector3(0, 0, 0);
-            
-        }
-        if (Input.GetKey(KeyCode.D))
-        {
-            moveDirection += Vector2.right;
-            attackIndex = 1;
-            minimapSpriteTransform.eulerAngles = new Vector3(0, 0, 270);
+            }
+            if (Input.GetKey(KeyCode.D))
+            {
+                moveDirection += Vector2.right;
+                attackIndex = 1;
+                minimapSpriteTransform.eulerAngles = new Vector3(0, 0, 270);
 
-        }
-        if (Input.GetKey(KeyCode.S))
-        {
-            moveDirection += Vector2.down;
-            attackIndex = 2;
-            minimapSpriteTransform.eulerAngles = new Vector3(0, 0, 180);
-        }
-        if (Input.GetKey(KeyCode.A))
-        {
-            moveDirection += Vector2.left;
-            attackIndex = 3;
-            minimapSpriteTransform.eulerAngles = new Vector3(0, 0, 90);
+            }
+            if (Input.GetKey(KeyCode.S))
+            {
+                moveDirection += Vector2.down;
+                attackIndex = 2;
+                minimapSpriteTransform.eulerAngles = new Vector3(0, 0, 180);
+            }
+            if (Input.GetKey(KeyCode.A))
+            {
+                moveDirection += Vector2.left;
+                attackIndex = 3;
+                minimapSpriteTransform.eulerAngles = new Vector3(0, 0, 90);
+            }
         }
 
 
@@ -149,10 +229,10 @@ public class Player : CharacterBase
         //attacking
         if (timeBetweenMelee <= 0)
         {
-            if (Input.GetKeyDown("1") && MyTarget != null)
+            if (Input.GetKeyDown("1") && MyTarget != null && !isDead)
             {
                 LOSBlock();
-                Debug.Log(Vector2.Distance(transform.position, MyTarget.transform.position));
+                //Debug.Log(Vector2.Distance(transform.position, MyTarget.transform.position));
                 if (Vector2.Distance(transform.position, MyTarget.transform.position) <= meleeRange && InLineOfSight() && energy.MyCurrentValue >= 10)
                 {
                     Debug.Log("Melee");
@@ -186,7 +266,7 @@ public class Player : CharacterBase
                     }
                 }
             }
-            else if (Input.GetKeyDown("1") && MyTarget == null) //no target
+            else if (Input.GetKeyDown("1") && MyTarget == null && !isDead) //no target
             {
                 errorText.text = "No target selected!";
                 errorTextTime = 3;
@@ -206,16 +286,42 @@ public class Player : CharacterBase
         {
             teleportCooldownCurrent -= Time.deltaTime;
         }
-        if (Input.GetKeyDown("2") && teleportCooldownCurrent <= 0)
+        if (Input.GetKeyDown("2") && teleportCooldownCurrent <= 0 && !isDead)
         {
             teleportAbility();
             teleportCooldownCurrent = teleportCooldownStart;
         }
-        else if(Input.GetKeyDown("2") && teleportCooldownCurrent > 0)
+        else if(Input.GetKeyDown("2") && teleportCooldownCurrent > 0 && !isDead)
         {
             errorText.text = "Teleport on cooldown!";
             errorTextTime = 3;
             errorTextOn = true;
+        }
+
+        if(Input.GetKeyDown("3") && castCooldownCurrent <= 0 && !isDead)
+        {
+            CastAttack();
+        }
+        else if(Input.GetKeyDown("3") && castCooldownCurrent > 0 && !isDead)
+        {
+            errorText.text = "Fireball on cooldown!";
+            errorTextTime = 3;
+            errorTextOn = true;
+        }
+
+        if(castCooldownCurrent > 0)
+        {
+            castCooldownCurrent -= Time.deltaTime;
+        }
+        if(animReset > 0)
+        {
+            animReset -= Time.deltaTime;
+        }
+
+        if(animReset <= 0)
+        {
+            isCasting = false;
+            animator.SetBool("isCasting", isCasting);
         }
 
     }
@@ -231,10 +337,21 @@ public class Player : CharacterBase
         losBlocks[attackIndex].ActivateBlocks();
     }
 
+    public void energyPot(int potVal)
+    {
+        if (energy.MyCurrentValue < energy.MyMaxValue && !isDead)
+        {
+            energy.MyCurrentValue += potVal;
+        }
+        if (energy.MyCurrentValue > energy.MyMaxValue)
+        {
+            energy.MyCurrentValue = energy.MyMaxValue;
+        }
+    }
     //constant regen energy when below max energy
     private void regenEnergy()
     {
-        if(energy.MyCurrentValue < energy.MyMaxValue)
+        if(energy.MyCurrentValue < energy.MyMaxValue && !isDead)
         {
             energy.MyCurrentValue += Time.deltaTime;
         }
@@ -244,9 +361,21 @@ public class Player : CharacterBase
         }
     }
 
+    public void healthPot(int potVal)
+    {
+        if (playerHealth.MyCurrentValue < playerHealth.MyMaxValue && !isDead)
+        {
+            playerHealth.MyCurrentValue += potVal;
+        }
+        if (playerHealth.MyCurrentValue > playerHealth.MyMaxValue)
+        {
+            playerHealth.MyCurrentValue = playerHealth.MyMaxValue;
+        }
+    }
+
     private void regenHealth()
     {
-        if(playerHealth.MyCurrentValue < playerHealth.MyMaxValue)
+        if(playerHealth.MyCurrentValue < playerHealth.MyMaxValue && !isDead)
         {
             playerHealth.MyCurrentValue += Time.deltaTime * playerRegenHealthSpeed;
         }
@@ -339,6 +468,43 @@ public class Player : CharacterBase
                 transform.position = teleportPos;
                 //teleport player to location of collider interaction
             }
+        }
+    }
+
+    private void CastAttack()
+    {
+        GameObject spawnedFireball;
+        LOSBlock();
+        if(InLineOfSight() && energy.MyCurrentValue >= 20 && MyTarget != null)
+        {
+            isCasting = true;
+            animator.SetBool("isCasting", isCasting);
+            castCooldownCurrent = castCooldownStart;
+            energy.MyCurrentValue -= 20;
+            animReset = 0.1f;
+
+            spawnedFireball = Instantiate(fireballPrefab, MyTarget.transform.position, Quaternion.identity);
+            MyTarget.GetComponentInParent<Enemy>().TakeDamage(fireballDamage);
+
+
+        }
+        else if (!InLineOfSight() && energy.MyCurrentValue >= 20 && MyTarget != null) //not in line of sight
+        {
+            errorText.text = "Target not in line of sight!";
+            errorTextTime = 3;
+            errorTextOn = true;
+        }
+        else if (InLineOfSight() && energy.MyCurrentValue < 20 && MyTarget != null) //not enough energy
+        {
+            errorText.text = "Not enough energy!";
+            errorTextTime = 3;
+            errorTextOn = true;
+        }
+        else if(MyTarget == null)
+        {
+            errorText.text = "No target selected!";
+            errorTextTime = 3;
+            errorTextOn = true;
         }
     }
 }
